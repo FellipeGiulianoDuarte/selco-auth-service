@@ -1,0 +1,144 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: selco-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: selco_auth
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - selco-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    container_name: selco-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: selco
+      RABBITMQ_DEFAULT_PASS: selco123
+      RABBITMQ_DEFAULT_VHOST: /selco
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+      - ./docker/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ./docker/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+    networks:
+      - selco-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Redis (para blacklist de tokens JWT)
+  redis:
+    image: redis:7.2-alpine
+    container_name: selco-redis
+    restart: unless-stopped
+    command: redis-server --requirepass redis123
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - selco-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # SELCO Auth Service
+  auth-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: selco-auth-service
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Spring Profiles
+      SPRING_PROFILES_ACTIVE: docker
+      
+      # Database Configuration
+      MONGODB_HOST: mongodb
+      MONGODB_PORT: 27017
+      MONGODB_DATABASE: selco_auth
+      MONGODB_USERNAME: admin
+      MONGODB_PASSWORD: admin123
+      MONGODB_AUTH_DATABASE: admin
+      
+      # RabbitMQ Configuration
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: selco
+      RABBITMQ_PASSWORD: selco123
+      RABBITMQ_VHOST: /selco
+      
+      # Redis Configuration
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: redis123
+      
+      # JWT Configuration
+      JWT_SECRET: myVerySecureSecretKey12345678901234567890123456789012345678901234567890
+      
+      # Application Configuration
+      ALLOWED_EMAIL_DOMAIN: "@selco.com.br"
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:8080"
+      
+      # Logging
+      LOGGING_LEVEL_COM_SELCO_AUTH: DEBUG
+      
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - selco-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/api/auth/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+# Networks
+networks:
+  selco-network:
+    driver: bridge
+    name: selco-network
+
+# Volumes
+volumes:
+  mongodb_data:
+    name: selco-mongodb-data
+  rabbitmq_data:
+    name: selco-rabbitmq-data
+  redis_data:
+    name: selco-redis-data

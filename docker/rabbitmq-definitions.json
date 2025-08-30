@@ -1,0 +1,86 @@
+{
+  "vhosts": [
+    {
+      "name": "/selco"
+    }
+  ],
+  "users": [
+    {
+      "name": "selco",
+      "password_hash": "jADFY0nEJBnxTXjl7Vp4EZNTz6k=",
+      "tags": "administrator"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "selco",
+      "vhost": "/selco",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+  "exchanges": [
+    {
+      "name": "selco.events",
+      "vhost": "/selco",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    }
+  ],
+  "queues": [
+    {
+      "name": "usuario.criado",
+      "vhost": "/selco",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000
+      }
+    },
+    {
+      "name": "email.para.envio",
+      "vhost": "/selco",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000
+      }
+    },
+    {
+      "name": "usuario.criado.dlq",
+      "vhost": "/selco",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "email.para.envio.dlq",
+      "vhost": "/selco",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
+  ],
+  "bindings": [
+    {
+      "source": "selco.events",
+      "vhost": "/selco",
+      "destination": "usuario.criado",
+      "destination_type": "queue",
+      "routing_key": "usuario.criado",
+      "arguments": {}
+    },
+    {
+      "source": "selco.events",
+      "vhost": "/selco",
+      "destination": "email.para.envio",
+      "destination_type": "queue",
+      "routing_key": "email.para.envio",
+      "arguments": {}
+    }
+  ]
+}

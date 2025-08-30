@@ -1,0 +1,80 @@
+server:
+  port: 8081
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: selco-auth-service
+  
+  data:
+    mongodb:
+      host: ${MONGODB_HOST:localhost}
+      port: ${MONGODB_PORT:27017}
+      database: ${MONGODB_DATABASE:selco_auth}
+      username: ${MONGODB_USERNAME:admin}
+      password: ${MONGODB_PASSWORD:password123}
+  
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+  
+  security:
+    user:
+      name: admin
+      password: admin
+
+logging:
+  level:
+    com.selco.auth: DEBUG
+    org.springframework.security: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+# Configurações customizadas da aplicação
+app:
+  jwt:
+    secret: ${JWT_SECRET:mySecretKey12345678901234567890123456789012345678901234567890}
+    expiration-time: 28800000 # 8 horas em milissegundos
+    refresh-expiration-time: 604800000 # 7 dias em milissegundos
+  
+  email:
+    allowed-domain: ${ALLOWED_EMAIL_DOMAIN:@selco.com.br}
+  
+  cors:
+    allowed-origins: ${CORS_ORIGINS:http://localhost:3000,http://localhost:8080}
+
+# Configurações do RabbitMQ
+rabbitmq:
+  exchanges:
+    user: ${RABBITMQ_USER_EXCHANGE:selco.user.exchange}
+    email: ${RABBITMQ_EMAIL_EXCHANGE:selco.email.exchange}
+  
+  queues:
+    user-created: ${RABBITMQ_USER_CREATED_QUEUE:selco.user.created.queue}
+    email-send: ${RABBITMQ_EMAIL_SEND_QUEUE:selco.email.send.queue}
+  
+  routing-keys:
+    user-created: ${RABBITMQ_USER_CREATED_KEY:user.created}
+    email-send: ${RABBITMQ_EMAIL_SEND_KEY:email.send}
+
+# Configuração do Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
